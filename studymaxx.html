@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MWH Sem 2 — Exam Feed</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,500&family=Archivo:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --ink:#0c0a09;
+    --ink2:#16130f;
+    --paper:#f4ecd8;
+    --amber:#f5b841;
+    --coral:#ff5d3b;
+    --lime:#b6e34c;
+    --sky:#5cc8ff;
+    --violet:#c39bff;
+    --muted:#8a8275;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;background:var(--ink);font-family:'Archivo',sans-serif;overflow:hidden;}
+
+  /* ---- intro overlay ---- */
+  #intro{
+    position:fixed;inset:0;z-index:50;background:var(--ink);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:32px;text-align:center;gap:18px;
+    background-image:radial-gradient(circle at 20% 10%, rgba(245,184,65,.10), transparent 45%),
+                     radial-gradient(circle at 85% 90%, rgba(255,93,59,.10), transparent 45%);
+  }
+  #intro .kicker{font-size:13px;letter-spacing:.32em;text-transform:uppercase;color:var(--amber);font-weight:700;}
+  #intro h1{font-family:'Fraunces',serif;font-weight:900;color:var(--paper);font-size:clamp(40px,12vw,76px);line-height:.92;}
+  #intro h1 em{font-style:italic;color:var(--coral);}
+  #intro p{color:var(--muted);max-width:30ch;line-height:1.5;font-size:15px;}
+  #intro .hint{display:flex;gap:22px;color:var(--muted);font-size:12.5px;letter-spacing:.05em;margin-top:4px;flex-wrap:wrap;justify-content:center;}
+  #intro .hint b{color:var(--paper);font-weight:700;}
+  #startBtn{
+    margin-top:10px;background:var(--amber);color:var(--ink);border:none;
+    font-family:'Archivo';font-weight:800;font-size:17px;letter-spacing:.02em;
+    padding:16px 40px;border-radius:100px;cursor:pointer;
+    box-shadow:0 10px 30px rgba(245,184,65,.35);transition:transform .15s ease;
+  }
+  #startBtn:active{transform:scale(.95);}
+
+  /* ---- feed ---- */
+  #feed{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;scroll-behavior:smooth;}
+  #feed::-webkit-scrollbar{display:none;}
+  #feed{-ms-overflow-style:none;scrollbar-width:none;}
+
+  .card{
+    height:100%;width:100%;scroll-snap-align:start;scroll-snap-stop:always;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:88px 26px 120px;position:relative;cursor:pointer;
+    background:var(--ink);
+  }
+  .card::before{
+    content:"";position:absolute;inset:0;z-index:0;opacity:.9;
+    background-image:radial-gradient(circle at 12% 8%, var(--glow1,rgba(245,184,65,.13)), transparent 42%),
+                     radial-gradient(circle at 90% 92%, var(--glow2,rgba(255,93,59,.10)), transparent 45%);
+    pointer-events:none;
+  }
+  .card > *{position:relative;z-index:1;}
+
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;}
+  .badge{font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;
+    padding:6px 12px;border-radius:100px;border:1.5px solid currentColor;}
+  .badge.cat{color:var(--accent);}
+  .badge.type{color:var(--paper);opacity:.55;border-color:rgba(244,236,216,.3);}
+
+  .qnum{font-family:'Fraunces',serif;font-style:italic;font-weight:500;
+    color:var(--muted);font-size:15px;margin-bottom:14px;}
+
+  .q{font-family:'Fraunces',serif;font-weight:600;color:var(--paper);
+    font-size:clamp(23px,6.2vw,34px);line-height:1.22;letter-spacing:-.01em;}
+
+  .choices{list-style:none;margin-top:22px;display:flex;flex-direction:column;gap:9px;}
+  .choices li{color:var(--paper);font-size:16px;font-weight:500;opacity:.82;
+    padding:13px 16px;border:1.5px solid rgba(244,236,216,.14);border-radius:14px;
+    display:flex;gap:11px;align-items:baseline;background:rgba(255,255,255,.015);transition:.2s;}
+  .choices li b{color:var(--accent);font-weight:800;font-family:'Fraunces';}
+  .choices li.right{border-color:var(--accent);background:color-mix(in srgb, var(--accent) 14%, transparent);opacity:1;}
+
+  .answer{
+    margin-top:26px;border-top:1.5px dashed rgba(244,236,216,.2);padding-top:20px;
+    opacity:0;transform:translateY(12px);transition:opacity .35s ease, transform .35s ease;
+    pointer-events:none;
+  }
+  .card.revealed .answer{opacity:1;transform:none;}
+  .answer .alabel{font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--accent);font-weight:800;margin-bottom:8px;display:block;}
+  .answer .atext{font-family:'Fraunces',serif;color:var(--paper);font-size:clamp(19px,5vw,26px);
+    font-weight:600;line-height:1.28;}
+  .answer .why{margin-top:12px;color:#cfc6b3;font-size:14.5px;line-height:1.55;}
+  .answer .why .trap{color:var(--coral);font-weight:700;}
+
+  .tap-cue{position:absolute;bottom:104px;left:0;right:0;text-align:center;
+    color:var(--muted);font-size:13px;letter-spacing:.08em;z-index:1;
+    animation:pulse 1.8s ease-in-out infinite;}
+  .card.revealed .tap-cue{display:none;}
+  @keyframes pulse{0%,100%{opacity:.35;}50%{opacity:.9;}}
+
+  /* score buttons */
+  .scorebar{position:absolute;bottom:30px;left:26px;right:26px;display:flex;gap:12px;z-index:2;
+    opacity:0;transform:translateY(14px);transition:.35s ease;pointer-events:none;}
+  .card.revealed .scorebar{opacity:1;transform:none;pointer-events:auto;}
+  .scorebar button{flex:1;font-family:'Archivo';font-weight:800;font-size:15px;
+    padding:15px;border-radius:100px;border:none;cursor:pointer;transition:transform .12s;}
+  .scorebar button:active{transform:scale(.94);}
+  .got{background:var(--lime);color:var(--ink);}
+  .miss{background:transparent;color:var(--coral);border:2px solid var(--coral)!important;}
+
+  /* top progress */
+  #topbar{position:fixed;top:0;left:0;right:0;z-index:30;padding:14px 18px;
+    display:flex;align-items:center;gap:14px;
+    background:linear-gradient(to bottom, var(--ink) 55%, transparent);}
+  #track{flex:1;height:5px;background:rgba(244,236,216,.13);border-radius:10px;overflow:hidden;}
+  #bar{height:100%;width:0;background:var(--amber);border-radius:10px;transition:width .3s ease;}
+  #count{font-size:12.5px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  #count b{color:var(--paper);}
+  #scorepill{font-size:12.5px;font-weight:800;color:var(--lime);font-variant-numeric:tabular-nums;white-space:nowrap;}
+
+  /* final card */
+  .final{align-items:center;text-align:center;justify-content:center;gap:6px;}
+  .final .big{font-family:'Fraunces';font-weight:900;font-size:clamp(56px,20vw,120px);
+    color:var(--amber);line-height:1;font-variant-numeric:tabular-nums;}
+  .final h2{font-family:'Fraunces';font-style:italic;color:var(--paper);font-size:30px;font-weight:600;}
+  .final p{color:var(--muted);max-width:32ch;line-height:1.5;margin-top:8px;}
+  .final .verdict{font-family:'Fraunces';font-size:22px;color:var(--coral);font-weight:600;margin-top:4px;}
+  .final button{margin-top:24px;background:var(--paper);color:var(--ink);border:none;
+    font-family:'Archivo';font-weight:800;font-size:16px;padding:15px 36px;border-radius:100px;cursor:pointer;}
+  .final button:active{transform:scale(.95);}
+  .missedlist{margin-top:22px;max-width:340px;width:100%;text-align:left;}
+  .missedlist h3{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--coral);font-weight:800;margin-bottom:10px;}
+  .missedlist div{color:#cfc6b3;font-size:13.5px;line-height:1.4;padding:7px 0;border-bottom:1px solid rgba(244,236,216,.08);}
+</style>
+</head>
+<body>
+
+<div id="intro">
+  <span class="kicker">Modern World History · Sem 2</span>
+  <h1>The <em>Exam</em><br>Feed</h1>
+  <p>Every topic. Trap-style questions. Tap a card to reveal the answer, then mark yourself.</p>
+  <div class="hint"><span><b>Scroll</b> to advance</span><span><b>Tap</b> to flip</span><span><b>Score</b> yourself</span></div>
+  <button id="startBtn">Start studying →</button>
+</div>
+
+<div id="topbar">
+  <div id="track"><div id="bar"></div></div>
+  <span id="count"><b>1</b>/<span id="total">0</span></span>
+  <span id="scorepill">✓ 0</span>
+</div>
+
+<div id="feed"></div>
+
+<script>
+// ===================== QUESTION BANK =====================
+// type: mc | tf | fill | cfbn (communism/fascism/both/neither) | id
+const CATS = {
+  Reformation:'var(--amber)', Renaissance:'var(--amber)', Philosophy:'var(--violet)',
+  Revolutions:'var(--coral)', WWI:'var(--sky)', WWII:'var(--sky)',
+  ColdWar:'var(--lime)', Imperialism:'var(--coral)', Ideology:'var(--violet)', MidEast:'var(--sky)'
+};
+const Q = [
+{cat:'Philosophy',type:'mc',q:'Hobbes and Locke both used a “state of nature” argument, yet reached opposite conclusions. The core difference is that:',ch:['Hobbes trusted human reason; Locke did not','Hobbes saw the state of nature as violent chaos requiring an absolute sovereign; Locke saw it as governed by natural law and rights','Both rejected the idea of a social contract','Locke favored monarchy; Hobbes favored democracy'],right:1,a:'Hobbes saw chaos needing an absolute sovereign; Locke saw natural law and rights.',why:'Same method (social contract), opposite payoff — this comparison is a classic AP stem.'},
+{cat:'Philosophy',type:'mc',q:'Which Enlightenment thinker most directly influenced the U.S. Bill of Rights’ structural protections against tyranny (as opposed to its rights language)?',ch:['Rousseau','Voltaire','Montesquieu','Hobbes'],right:2,a:'Montesquieu.',why:'Structural = separation of powers/checks (Montesquieu). Rights language leans Locke.'},
+{cat:'Philosophy',type:'tf',q:'TRUE or FALSE: Rousseau’s “general will” is fully compatible with protecting individual minority rights against the majority.',a:'FALSE.',why:'The general will can override the individual — critics argue it can justify majoritarian coercion.'},
+{cat:'Philosophy',type:'id',q:'Which Enlightenment value did Voltaire champion that put him in direct conflict with both Church and state censorship?',a:'Freedom of speech / religious tolerance.'},
+{cat:'Philosophy',type:'mc',q:'A revolutionary cites “consent of the governed” to justify overthrowing a king. This argument descends most directly from:',ch:['Hobbes','Locke','Burckhardt','Calvin'],right:1,a:'Locke.'},
+{cat:'Philosophy',type:'cfbn',q:'An ideology grounded in natural rights, consent of the governed, and free markets. (C/F/B/N)',a:'Neither.'},
+{cat:'Philosophy',type:'id',q:'Name the work in which Hobbes argues the sovereign’s power must be undivided to prevent civil war.',a:'Leviathan.'},
+{cat:'Philosophy',type:'mc',q:'Which pairing of thinker and core idea is INCORRECT?',ch:['Montesquieu — separation of powers','Rousseau — general will','Locke — divine right of kings','Hobbes — absolute sovereign'],right:2,a:'Locke — divine right of kings.',why:'Locke opposed absolutism; divine right is the thing he argued against.'},
+{cat:'Philosophy',type:'tf',q:'TRUE or FALSE: Locke argued government legitimacy comes from God’s appointment of the monarch.',a:'FALSE.',why:'Locke = consent of the governed, not divine right.'},
+{cat:'Philosophy',type:'id',q:'Which thinker’s ideas are most often cited as the philosophical seed of modern representative democracy and the right of revolution?',a:'Locke.'},
+{cat:'Philosophy',type:'mc',q:'Enlightenment salons and the Encyclopédie mattered chiefly because they:',ch:['Were controlled by the Church','Spread new ideas across literate elites and shaped public opinion','Were open only to the peasantry','Rejected reason in favor of tradition'],right:1,a:'Spread ideas across literate elites and shaped public opinion.',why:'Women often hosted/ran salons — a key “role of women” point.'},
+{cat:'Philosophy',type:'tf',q:'TRUE or FALSE: Women played a significant role in the Enlightenment primarily as hosts and organizers of salons that shaped intellectual exchange.',a:'TRUE.'},
+{cat:'Philosophy',type:'mc',q:'Which best explains why Enlightenment ideas were politically dangerous to monarchs?',ch:['They emphasized obedience to kings','They located sovereignty in the people and subjected rulers to reason and law','They rejected all forms of government','They were purely religious'],right:1,a:'They located sovereignty in the people and subjected rulers to reason and law.'},
+{cat:'Philosophy',type:'id',q:'Whose framework divides government into legislative, executive, and judicial branches?',a:'Montesquieu.'},
+{cat:'Philosophy',type:'cfbn',q:'A system that subjects the ruler to the rule of law and elected representation. (C/F/B/N)',a:'Neither.'},
+{cat:'Philosophy',type:'mc',q:'Voltaire’s famous hostility was aimed most sharply at:',ch:['Religious intolerance and Church abuses','Free markets','Representative government','Scientific inquiry'],right:0,a:'Religious intolerance and Church abuses.'},
+{cat:'Philosophy',type:'tf',q:'TRUE or FALSE: Hobbes’ Leviathan was written partly in response to the chaos of civil war, which shaped his preference for strong central authority.',a:'TRUE.'},
+{cat:'Philosophy',type:'id',q:'Which philosopher is most associated with the phrase that the people’s collective will should be sovereign?',a:'Rousseau (the general will).'},
+ 
+// ---------------- REFORMATION (20) ----------------
+{cat:'Reformation',type:'mc',q:'The single biggest reason the Reformation spread so fast across Europe (vs. earlier reform attempts) was:',ch:['Royal armies enforcing it','The printing press mass-producing Luther’s ideas','The Council of Trent','Calvin’s Geneva'],right:1,a:'The printing press mass-producing Luther’s ideas.'},
+{cat:'Reformation',type:'tf',q:'TRUE or FALSE: Luther’s core theological claims were salvation by faith alone and the authority of scripture alone.',a:'TRUE.'},
+{cat:'Reformation',type:'mc',q:'Henry VIII’s Reformation differed fundamentally from Luther’s because it was driven by:',ch:['A new theology of grace','Dynastic and political needs rather than doctrine','Predestination','The sale of indulgences'],right:1,a:'Dynastic/political needs rather than doctrine.'},
+{cat:'Reformation',type:'id',q:'What 1534 act made the English monarch the head of the Church of England?',a:'The Act of Supremacy.'},
+{cat:'Reformation',type:'cfbn',q:'Predestination — the doctrine that God has already chosen the saved — is associated with which reformer?',a:'Calvin (Calvinism).'},
+{cat:'Reformation',type:'mc',q:'Which groups descend from Calvinism?',ch:['Lutherans and Anglicans','Huguenots, Puritans, and Presbyterians','Catholics and Orthodox','Anabaptists only'],right:1,a:'Huguenots, Puritans, and Presbyterians.'},
+{cat:'Reformation',type:'id',q:'Name Calvin’s major theological work.',a:'Institutes of the Christian Religion.'},
+{cat:'Reformation',type:'mc',q:'The Counter-Reformation’s central reforming body was the:',ch:['Council of Nicaea','Council of Trent','Diet of Worms','Peace of Augsburg'],right:1,a:'Council of Trent (1545–63).'},
+{cat:'Reformation',type:'tf',q:'TRUE or FALSE: The Council of Trent reaffirmed Catholic doctrine, ended the sale of indulgences, and reformed the clergy.',a:'TRUE.'},
+{cat:'Reformation',type:'id',q:'What were indulgences, and why were they Luther’s primary target?',a:'Payments to reduce punishment for sin — the symbol of Church corruption.'},
+{cat:'Reformation',type:'mc',q:'Which best describes the Counter-Reformation?',ch:['The Protestant attack on Rome','The Catholic Church’s internal reform + pushback against Protestantism','A merger of Lutheran and Catholic churches','A purely political movement'],right:1,a:'The Catholic Church’s internal reform and pushback.'},
+{cat:'Reformation',type:'tf',q:'TRUE or FALSE: Anglicanism originated as a theological revolt over the nature of salvation.',a:'FALSE.',why:'It began as a political break by Henry VIII, not a doctrinal one.'},
+{cat:'Reformation',type:'id',q:'Luther translated the Bible into which language, expanding lay access to scripture?',a:'German.'},
+{cat:'Reformation',type:'mc',q:'A long-term political consequence of the Reformation was:',ch:['The permanent unity of Western Christianity','The fragmentation of Christendom and decades of religious warfare','The abolition of monarchy','The end of the printing press'],right:1,a:'The fragmentation of Christendom and religious warfare.'},
+{cat:'Reformation',type:'cfbn',q:'A religious government enforcing strict moral discipline, as Calvin built in Geneva — was this a modern political ideology of Communism, Fascism, Both, or Neither?',a:'Neither.',why:'Trap: a theocracy is not a 20th-c. political ideology. Don’t over-read.'},
+{cat:'Reformation',type:'id',q:'Which reformer is credited with launching the Protestant Reformation in 1517?',a:'Martin Luther.'},
+{cat:'Reformation',type:'tf',q:'TRUE or FALSE: Calvinism is often linked to a disciplined work ethic.',a:'TRUE.'},
+{cat:'Reformation',type:'mc',q:'Why did Luther reject indulgences specifically?',ch:['They funded Protestant churches','They implied salvation could be purchased, contradicting salvation by faith','They were a Calvinist invention','They were endorsed by Henry VIII'],right:1,a:'They implied salvation could be purchased, contradicting faith alone.'},
+{cat:'Reformation',type:'id',q:'Name the three major Protestant branches that broke from Rome.',a:'Lutheran, Calvinist, and Anglican.'},
+{cat:'Reformation',type:'mc',q:'Which statement about Henry VIII is MOST accurate?',ch:['He adopted Lutheran theology wholesale','He made a political break while keeping much Catholic practice','He founded Calvinism','He convened the Council of Trent'],right:1,a:'He made a political break while keeping much Catholic practice.'},
+ 
+// ---------------- RENAISSANCE / SCI REV (18) ----------------
+{cat:'Renaissance',type:'mc',q:'Burckhardt’s thesis about the Renaissance was that it marked:',ch:['A return to medieval feudalism','The birth of modern individualism and humanism','The triumph of the Church','The decline of art'],right:1,a:'The birth of modern individualism and humanism.'},
+{cat:'Renaissance',type:'tf',q:'TRUE or FALSE: The Renaissance began in Florence, Italy and emphasized a “rebirth” of classical Greek and Roman learning.',a:'TRUE.'},
+{cat:'Renaissance',type:'mc',q:'Why was the Scientific Revolution so controversial in Europe?',ch:['It had no practical applications','It challenged Church authority and the inherited Aristotelian/biblical worldview','It was secret','It was state-mandated'],right:1,a:'It challenged Church authority and the inherited worldview.'},
+{cat:'Renaissance',type:'mc',q:'One major historiographical question asks why the Scientific Revolution flowered in Europe rather than in the Muslim world or China. A common explanation emphasizes:',ch:['Europe’s lack of universities','Competition among fragmented states, universities, and new institutions','State suppression of all inquiry in Europe','The absence of printing in Europe'],right:1,a:'Competition among fragmented states plus universities and new institutions.'},
+{cat:'Renaissance',type:'id',q:'False claims dressed as science — like racial “science” and eugenics — are called what, and what did they later justify?',a:'Pseudoscience — later used to justify imperialism, racism, and the Holocaust.'},
+{cat:'Renaissance',type:'tf',q:'TRUE or FALSE: Humanism centered human potential and classical texts rather than purely religious scholasticism.',a:'TRUE.'},
+{cat:'Renaissance',type:'mc',q:'The Church’s initial response to challenging scientific claims was generally to:',ch:['Endorse them immediately','Resist or condemn those that contradicted doctrine','Ignore them entirely','Fund them without limit'],right:1,a:'Resist or condemn those contradicting doctrine.'},
+{cat:'Renaissance',type:'id',q:'Roughly what centuries does the Renaissance span, and where did it spread from?',a:'~14th–17th centuries; spread from Italy across Europe.'},
+{cat:'Renaissance',type:'mc',q:'Which best explains how Renaissance ideas spread beyond Italy?',ch:['Forced conversion','Trade, printing, and the movement of scholars and art','Military conquest only','Papal decree'],right:1,a:'Trade, printing, and the movement of scholars and art.'},
+{cat:'Renaissance',type:'tf',q:'TRUE or FALSE: Pseudoscience was later weaponized to provide a “rational” veneer for racist imperial and genocidal policies.',a:'TRUE.'},
+{cat:'Renaissance',type:'mc',q:'Renaissance individualism is best understood as:',ch:['The collective submission of the person to the state','A new emphasis on human achievement, talent, and the individual','Religious uniformity','Economic communism'],right:1,a:'A new emphasis on human achievement and the individual.'},
+{cat:'Renaissance',type:'id',q:'What is the literal meaning of the word “Renaissance”?',a:'“Rebirth.”'},
+{cat:'Renaissance',type:'mc',q:'A reason often cited for why China did not produce a comparable Scientific Revolution is:',ch:['It lacked any advanced technology','A more centralized state and different institutional incentives','It had no scholars','It banned mathematics'],right:1,a:'A more centralized state and different institutional incentives.',why:'AP nuance — China was technologically advanced; the question is institutional, not capability.'},
+{cat:'Renaissance',type:'tf',q:'TRUE or FALSE: Humanism rejected classical antiquity in favor of purely medieval theology.',a:'FALSE.',why:'Humanism revived classical antiquity.'},
+{cat:'Renaissance',type:'mc',q:'The printing press affected BOTH the Renaissance and Reformation by:',ch:['Limiting the spread of ideas','Rapidly disseminating texts to a growing literate public','Replacing universities','Ending humanism'],right:1,a:'Rapidly disseminating texts to a growing literate public.'},
+{cat:'Renaissance',type:'id',q:'Name the broad intellectual movement that elevated human reason, classical texts, and earthly life during the Renaissance.',a:'Humanism.'},
+{cat:'Renaissance',type:'tf',q:'TRUE or FALSE: The Scientific Revolution’s conflict with the Church was partly a struggle over who held the authority to define truth.',a:'TRUE.'},
+{cat:'Renaissance',type:'mc',q:'Which is the best one-line summary of the Renaissance?',ch:['A religious crusade','A rebirth of classical learning fueling humanism, art, and individualism','A peasant revolt','A military empire'],right:1,a:'A rebirth of classical learning fueling humanism, art, and individualism.'},
+ 
+// ---------------- REVOLUTIONS (26) ----------------
+{cat:'Revolutions',type:'mc',q:'The French Revolution’s rallying cry was:',ch:['“Peace, Land, and Bread”','“Liberty, Equality, Fraternity”','“Asia for Asians”','“Blood and Iron”'],right:1,a:'“Liberty, Equality, Fraternity.”',why:'“Peace, Land, and Bread” is the Bolshevik slogan — common mix-up.'},
+{cat:'Revolutions',type:'tf',q:'TRUE or FALSE: The Reign of Terror was directed by the Committee of Public Safety under Robespierre.',a:'TRUE.'},
+{cat:'Revolutions',type:'id',q:'How did the French Revolution’s radical phase end for Robespierre, and in what year?',a:'He was guillotined in 1794 (Thermidorian Reaction).'},
+{cat:'Revolutions',type:'mc',q:'Why did the Haitian Revolution terrify slaveholding powers?',ch:['It failed quickly','It was the only successful large-scale slave revolt and created the first Black republic','It restored slavery','It had no global impact'],right:1,a:'It was the only successful large-scale slave revolt, creating the first Black republic.'},
+{cat:'Revolutions',type:'tf',q:'TRUE or FALSE: Toussaint L’Ouverture declared Haitian independence before dying in a French prison.',a:'FALSE.',why:'He died in prison BEFORE independence; Dessalines declared it in 1804.'},
+{cat:'Revolutions',type:'id',q:'What was the “independence debt,” and how did it affect Haiti?',a:'France forced Haiti to pay reparations (1825) for recognition, crippling its economy for over a century.'},
+{cat:'Revolutions',type:'mc',q:'Bolívar’s vision of “Gran Colombia” ultimately:',ch:['Succeeded and endures today','Failed as the union fragmented','Was conquered by Spain','Became part of the U.S.'],right:1,a:'Failed as the union fragmented.'},
+{cat:'Revolutions',type:'id',q:'List the modern nations Bolívar helped liberate.',a:'Venezuela, Colombia, Ecuador, Peru, and Bolivia.'},
+{cat:'Revolutions',type:'mc',q:'Napoleon came to power through which event in 1799?',ch:['A coup d’état','A free election','Inheritance','A foreign invasion'],right:0,a:'A coup d’état.'},
+{cat:'Revolutions',type:'tf',q:'TRUE or FALSE: The Napoleonic Code spread legal principles like equality before the law across much of Europe.',a:'TRUE.'},
+{cat:'Revolutions',type:'id',q:'Where and when was Napoleon decisively defeated?',a:'Waterloo, 1815.'},
+{cat:'Revolutions',type:'mc',q:'The French Revolution is often called a “model for modern revolutions” because it:',ch:['Restored absolute monarchy','Demonstrated mass mobilization to overthrow a monarchy in the name of popular sovereignty','Was entirely peaceful','Had no ideology'],right:1,a:'It modeled mass mobilization to overthrow a monarchy for popular sovereignty.'},
+{cat:'Revolutions',type:'mc',q:'How did the American and French Revolutions influence the Haitian Revolution?',ch:['They had no connection','Their ideals of liberty and rights inspired enslaved people to claim the same','They funded the slaveholders','They banned revolution'],right:1,a:'Their ideals of liberty/rights inspired the enslaved to claim them too.',why:'“How revolutions impacted each other” — a study-guide essay hook.'},
+{cat:'Revolutions',type:'id',q:'Name the body whose formation was a pivotal early step of the French Revolution, asserting the people’s sovereignty.',a:'The National Assembly.'},
+{cat:'Revolutions',type:'tf',q:'TRUE or FALSE: Women played no meaningful role in the French Revolution.',a:'FALSE.',why:'Women marched on Versailles, organized politically, and pushed revolutionary demands.'},
+{cat:'Revolutions',type:'mc',q:'The Haitian Revolution spanned which years?',ch:['1776–1783','1789–1799','1791–1804','1848–1871'],right:2,a:'1791–1804.'},
+{cat:'Revolutions',type:'id',q:'Who declared Haitian independence on January 1, 1804, and what title did he take?',a:'Dessalines — he named himself emperor.'},
+{cat:'Revolutions',type:'mc',q:'Napoleon’s trajectory is best summarized as:',ch:['Priest → pope','General → Emperor','Peasant → king by birth','Merchant → president'],right:1,a:'General → Emperor.'},
+{cat:'Revolutions',type:'tf',q:'TRUE or FALSE: Robespierre was a moderate who opposed political violence.',a:'FALSE.',why:'He was a radical Jacobin who ran the Reign of Terror.'},
+{cat:'Revolutions',type:'id',q:'What general phase followed the radical Terror and led toward Napoleon’s rise?',a:'The Thermidorian Reaction → the Directory → Napoleon’s coup.'},
+{cat:'Revolutions',type:'mc',q:'Toussaint L’Ouverture is best described as:',ch:['A French king','A formerly enslaved man who became a brilliant general leading the Haitian Revolution','A Spanish conquistador','A Bolshevik leader'],right:1,a:'A formerly enslaved man and brilliant general who led the Haitian Revolution.'},
+{cat:'Revolutions',type:'cfbn',q:'A revolution fought under the banner of liberty, equality, natural rights, and popular sovereignty (the French Rev). Is its ideology Communism, Fascism, Both, or Neither?',a:'Neither.',why:'Liberal/republican ideals predate and differ from 20th-c. communism and fascism.'},
+{cat:'Revolutions',type:'mc',q:'Why is the National Assembly considered “vital” to the French Revolution?',ch:['It crowned Napoleon','It asserted that sovereignty belonged to the people, not the king','It was a Church council','It restored feudalism'],right:1,a:'It asserted sovereignty belonged to the people, not the king.'},
+{cat:'Revolutions',type:'tf',q:'TRUE or FALSE: The Haitian Revolution’s success directly challenged the economic foundation of Atlantic slavery.',a:'TRUE.'},
+{cat:'Revolutions',type:'id',q:'Which 1789 revolution became the template that later revolutionaries across the world studied and imitated?',a:'The French Revolution.'},
+{cat:'Revolutions',type:'mc',q:'A through-line connecting the French, Haitian, and Latin American revolutions is:',ch:['Restoration of monarchy','The spread of Enlightenment ideals of liberty and self-rule','Religious conversion','Industrial collapse'],right:1,a:'The spread of Enlightenment ideals of liberty and self-rule.'},
+ 
+// ---------------- IDEOLOGY: AUTH/TOTAL + CFBN + FASCISM/COMMUNISM (30) ----------------
+{cat:'Ideology',type:'mc',q:'The clearest distinction between authoritarian and totalitarian regimes is:',ch:['Totalitarian regimes are democratic','Authoritarian regimes control politics; totalitarian regimes seek to control all of life','They are identical','Authoritarian regimes control thought; totalitarian regimes do not'],right:1,a:'Authoritarian = politics only; totalitarian = all of life.'},
+{cat:'Ideology',type:'tf',q:'TRUE or FALSE: Every totalitarian state is authoritarian, but not every authoritarian state is totalitarian.',a:'TRUE.'},
+{cat:'Ideology',type:'cfbn',q:'BY DEFINITION — Anti-democratic, anti-communist, ultranationalist, glorifying the state and a strong leader. (C/F/B/N)',a:'Fascism.'},
+{cat:'Ideology',type:'cfbn',q:'BY DEFINITION — Seeks to abolish class and place the economy under state/collective control. (C/F/B/N)',a:'Communism.'},
+{cat:'Ideology',type:'cfbn',q:'Mass propaganda used to manufacture loyalty. (C/F/B/N)',a:'Both.'},
+{cat:'Ideology',type:'cfbn',q:'A single official ideology enforced by secret police. (C/F/B/N)',a:'Both.'},
+{cat:'Ideology',type:'cfbn',q:'Scapegoating an ethnic or religious minority for national problems. (C/F/B/N)',a:'Fascism.'},
+{cat:'Ideology',type:'cfbn',q:'Forcing peasants onto collective farms to industrialize rapidly. (C/F/B/N)',a:'Communism.'},
+{cat:'Ideology',type:'cfbn',q:'Free elections, independent courts, and protected individual rights. (C/F/B/N)',a:'Neither.'},
+{cat:'Ideology',type:'cfbn',q:'Imperial Japan’s militarist, ultranationalist wartime regime fits which category? (C/F/B/N)',a:'Fascism.',why:'Asian fascism — the study guide lists militarist Imperial Japan here.'},
+{cat:'Ideology',type:'cfbn',q:'A five-year economic plan to force rapid state-directed industrialization. (C/F/B/N)',a:'Communism.'},
+{cat:'Ideology',type:'cfbn',q:'Glorifying war and national rebirth through a charismatic leader. (C/F/B/N)',a:'Fascism.'},
+{cat:'Ideology',type:'cfbn',q:'A one-party dictatorship that tolerates private business and religion while crushing political opposition — closest fit? (C/F/B/N)',a:'Neither.',why:'That describes an authoritarian state, not specifically communist or fascist ideology.'},
+{cat:'Ideology',type:'mc',q:'Which modern state is the textbook example of a TOTALITARIAN regime today?',ch:['Canada','North Korea','Costa Rica','Switzerland'],right:1,a:'North Korea.'},
+{cat:'Ideology',type:'tf',q:'TRUE or FALSE: Fascism is hostile to communism, despite both being capable of totalitarian control.',a:'TRUE.'},
+{cat:'Ideology',type:'mc',q:'Fascism and communism are often confused because both:',ch:['Embrace liberal democracy','Can become one-party totalitarian states using terror and propaganda','Protect free markets','Reject all leaders'],right:1,a:'Both can become one-party totalitarian states using terror and propaganda.'},
+{cat:'Ideology',type:'mc',q:'The deepest IDEOLOGICAL difference between fascism and communism is:',ch:['Fascism is internationalist; communism is nationalist','Fascism glorifies the nation/race; communism seeks a classless, internationalist society','They have the same goals','Neither uses propaganda'],right:1,a:'Fascism glorifies nation/race; communism seeks a classless, internationalist society.'},
+{cat:'Ideology',type:'id',q:'Define “genocide” and name its archetypal modern example.',a:'Deliberate destruction of a national/ethnic/racial/religious group — the Holocaust.'},
+{cat:'Ideology',type:'id',q:'Define “scapegoating” and explain why it is central to fascism.',a:'Blaming a group for society’s problems — it unifies followers against an enemy.'},
+{cat:'Ideology',type:'fill',q:'Favoring native-born people over immigrants — anti-immigrant hostility — is called ______.',a:'nativism.'},
+{cat:'Ideology',type:'fill',q:'Strong pride in and identification with one’s nation, a cause of both world wars, is ______.',a:'nationalism.'},
+{cat:'Ideology',type:'mc',q:'Which propaganda film is PRO-fascist?',ch:['The Great Dictator','Don’t Be a Sucker','Triumph of the Will','None of these'],right:2,a:'Triumph of the Will.'},
+{cat:'Ideology',type:'tf',q:'TRUE or FALSE: The Great Dictator and Don’t Be a Sucker were anti-fascist responses.',a:'TRUE.'},
+{cat:'Ideology',type:'mc',q:'A dictator is best defined as:',ch:['An elected official with limited powers','A ruler with absolute, unchecked power','A constitutional monarch','A judge'],right:1,a:'A ruler with absolute, unchecked power.'},
+{cat:'Ideology',type:'cfbn',q:'Stalinist USSR and Mao’s China are examples of which economic ideology? (C/F/B/N)',a:'Communism.'},
+{cat:'Ideology',type:'cfbn',q:'Nazi Germany and Mussolini’s Italy are examples of which ideology? (C/F/B/N)',a:'Fascism.'},
+{cat:'Ideology',type:'mc',q:'Which is the BEST thesis for comparing authoritarian vs. totalitarian states?',ch:['They are the same in every way','Both concentrate power and crush political freedom, but differ in scope — politics only vs. all of life','Totalitarianism is more democratic','Authoritarianism controls thought; totalitarianism does not'],right:1,a:'Both concentrate power; the difference is scope.'},
+{cat:'Ideology',type:'tf',q:'TRUE or FALSE: Totalitarian regimes aim to control the economy, culture, family, and even private thought.',a:'TRUE.'},
+{cat:'Ideology',type:'id',q:'Name the all-controlling system that uses one ideology, secret police, and propaganda to dominate every sphere of life.',a:'Totalitarianism.'},
+{cat:'Ideology',type:'mc',q:'Why is fascism described as “anti-” several things at once?',ch:['It is pro-democracy','It is anti-democratic, anti-communist, and anti-liberal while pro-nation and pro-leader','It opposes nationalism','It supports class revolution'],right:1,a:'It is anti-democratic, anti-communist, and anti-liberal, while glorifying nation and leader.'},
+ 
+// ---------------- WWI + VERSAILLES + MID-EAST (22) ----------------
+{cat:'WWI',type:'mc',q:'Which “Big Three” leader most wanted to harshly punish Germany at Versailles?',ch:['Wilson','Lloyd George','Clemenceau','Orlando'],right:2,a:'Clemenceau (“The Tiger”).'},
+{cat:'WWI',type:'mc',q:'Wilson’s vision at Versailles centered on:',ch:['Crushing Germany','The Fourteen Points, self-determination, and a League of Nations','Restoring monarchies','Expanding French territory'],right:1,a:'Fourteen Points, self-determination, and a League of Nations.'},
+{cat:'WWI',type:'id',q:'Which British leader represented the “moderate middle ground” at Versailles?',a:'David Lloyd George.'},
+{cat:'WWI',type:'mc',q:'The war-guilt clause and heavy reparations of the Treaty of Versailles are significant because they:',ch:['Stabilized Germany','Bred resentment that helped cause WWII','Were never enforced','Created the UN'],right:1,a:'Bred resentment that helped cause WWII.'},
+{cat:'WWI',type:'tf',q:'TRUE or FALSE: The Treaty of Versailles (1919) ended WWI and imposed territorial losses on Germany.',a:'TRUE.'},
+{cat:'MidEast',type:'mc',q:'The Sykes-Picot Agreement (1916) is best described as:',ch:['A peace treaty ending WWI','A secret Britain/France deal to divide the Ottoman Middle East','A Jewish homeland declaration','A NATO precursor'],right:1,a:'A secret Britain/France deal to divide the Ottoman Middle East.'},
+{cat:'MidEast',type:'tf',q:'TRUE or FALSE: Sykes-Picot drew artificial borders that contributed to long-term instability in the Middle East.',a:'TRUE.'},
+{cat:'MidEast',type:'id',q:'The 1917 British declaration supporting a Jewish national home in Palestine — name it and the conflict it helped seed.',a:'The Balfour Declaration — a root of the Israeli–Palestinian conflict.'},
+{cat:'WWI',type:'mc',q:'Self-determination, as Wilson framed it, means:',ch:['The right of empires to expand','The right of peoples to choose their own government','Mandatory disarmament','Free trade'],right:1,a:'The right of peoples to choose their own government.'},
+{cat:'WWI',type:'tf',q:'TRUE or FALSE: Wilson intended self-determination mainly for European peoples, but it later inspired colonized peoples worldwide.',a:'TRUE.',why:'A key irony AP loves — it fueled decolonization Wilson never envisioned.'},
+{cat:'WWI',type:'id',q:'What international body emerged from WWI to prevent future wars, and which major power never joined?',a:'The League of Nations — the U.S. never joined.'},
+{cat:'WWI',type:'mc',q:'A single shared cause that helped ignite BOTH world wars was:',ch:['Communism','Aggressive nationalism','Free trade','Decolonization'],right:1,a:'Aggressive nationalism.'},
+{cat:'WWI',type:'tf',q:'TRUE or FALSE: The assassination of Archduke Franz Ferdinand was tied to Serbian nationalism.',a:'TRUE.'},
+{cat:'WWI',type:'mc',q:'Why are the World Wars called “unprecedented”?',ch:['They were small and local','They were total, industrialized, and global in scope','They involved no civilians','They used no new technology'],right:1,a:'They were total, industrialized, and global.'},
+{cat:'WWI',type:'id',q:'Define “total war.”',a:'War in which whole societies and economies are mobilized, blurring the soldier–civilian line.'},
+{cat:'MidEast',type:'mc',q:'Sykes-Picot and the Berlin Conference are comparable because both:',ch:['Were Cold War events','Saw outside powers impose artificial borders on a region','Granted independence','Were peace treaties'],right:1,a:'Outside powers imposed artificial borders on a region.',why:'Cross-era comparison trap — neither is Cold War.'},
+{cat:'WWI',type:'tf',q:'TRUE or FALSE: The harshness of the Versailles settlement is widely cited as a contributing cause of WWII.',a:'TRUE.'},
+{cat:'MidEast',type:'id',q:'Name the agreement (secret, 1916) and the declaration (1917) that together reshaped the modern Middle East.',a:'Sykes-Picot Agreement and the Balfour Declaration.'},
+{cat:'WWI',type:'mc',q:'Which leader is paired with the WRONG description?',ch:['Clemenceau — wanted to punish Germany','Wilson — idealist with Fourteen Points','Lloyd George — moderate','Wilson — wanted the harshest possible reparations'],right:3,a:'Wilson did NOT want the harshest reparations — that was Clemenceau.'},
+{cat:'WWI',type:'tf',q:'TRUE or FALSE: The League of Nations and the UN were both created after WWI.',a:'FALSE.',why:'League = after WWI; UN = after WWII.'},
+{cat:'WWI',type:'id',q:'What name is given to the overall WWI peace settlement signed near Paris in 1919?',a:'The Peace of Paris / Treaty of Versailles.'},
+{cat:'MidEast',type:'mc',q:'The long-term legacy of Sykes-Picot is best described as:',ch:['Lasting regional stability','Artificial borders fueling later conflict','Full Arab independence','A unified Ottoman state'],right:1,a:'Artificial borders fueling later conflict.'},
+ 
+// ---------------- WWII (30) ----------------
+{cat:'WWII',type:'mc',q:'Which list correctly identifies the Axis powers?',ch:['Britain, USSR, USA','Germany, Italy, Japan','France, China, USA','Germany, Britain, USSR'],right:1,a:'Germany, Italy, Japan.'},
+{cat:'WWII',type:'mc',q:'Which list correctly identifies major Allied powers?',ch:['Germany, Italy, Japan','Britain, USSR, USA, France, China','Italy, Spain, Japan','Germany, USSR, Japan'],right:1,a:'Britain, USSR, USA, France, China.'},
+{cat:'WWII',type:'id',q:'Define “appeasement” and give its signature example.',a:'Giving in to an aggressor to avoid war — Chamberlain conceding the Sudetenland to Hitler at Munich (1938).'},
+{cat:'WWII',type:'mc',q:'Appeasement is judged a failure mainly because:',ch:['Hitler had limited goals and stopped','It emboldened Hitler, who kept expanding','It triggered the Cold War','It saved Czechoslovakia'],right:1,a:'It emboldened Hitler, who kept expanding.'},
+{cat:'WWII',type:'tf',q:'TRUE or FALSE: At Munich (1938), Britain and France gave Hitler the Sudetenland on the promise it was his last demand.',a:'TRUE.'},
+{cat:'WWII',type:'id',q:'Which British leader opposed appeasement and warned that Hitler had to be confronted?',a:'Winston Churchill.'},
+{cat:'WWII',type:'mc',q:'Hitler legally became Chancellor in 1933 largely because:',ch:['He won a landslide majority','The Depression fueled the Nazi surge and elites underestimated him','He led a successful military coup','The Allies installed him'],right:1,a:'The Depression fueled the Nazi surge and elites underestimated him.'},
+{cat:'WWII',type:'tf',q:'TRUE or FALSE: Mussolini took power via the March on Rome in 1922 and is considered the founder of fascism.',a:'TRUE.'},
+{cat:'WWII',type:'mc',q:'The Night of the Long Knives (1934) accomplished what for Hitler?',ch:['It started WWII','It purged the SA leadership and consolidated his power','It created the Nuremberg Laws','It ended the Holocaust'],right:1,a:'It purged the SA leadership and consolidated his power.'},
+{cat:'WWII',type:'id',q:'Contrast the SA and the SS in one line.',a:'SA = early street thugs (Brownshirts, Röhm); SS = elite force that rose after and ran the camps.'},
+{cat:'WWII',type:'fill',q:'The 1935 laws stripping German Jews of citizenship and legalizing antisemitism were the ______.',a:'Nuremberg Laws.'},
+{cat:'WWII',type:'fill',q:'The 1938 “Night of Broken Glass,” a turning point toward the Holocaust, is called ______.',a:'Kristallnacht.'},
+{cat:'WWII',type:'mc',q:'Which best explains how the Great Depression fed Hitler’s rise WITHOUT being the sole cause?',ch:['It was irrelevant','It was the decisive trigger acting on existing resentment and a weak Weimar democracy','It was the only cause','It strengthened German democracy'],right:1,a:'Decisive trigger acting on existing resentment and a weak democracy.'},
+{cat:'WWII',type:'tf',q:'TRUE or FALSE: The same Depression produced the New Deal in the U.S. and Hitler in Germany — reform within democracy vs. its abandonment.',a:'TRUE.'},
+{cat:'WWII',type:'mc',q:'Which factor is most credited with the bulk of German military casualties?',ch:['The Pacific island campaigns','The Eastern Front against the USSR','The North African campaign','The Battle of Britain'],right:1,a:'The Eastern Front against the USSR (~80% of German military deaths).'},
+{cat:'WWII',type:'id',q:'Name the European turning point that began Germany’s collapse on the Eastern Front.',a:'Stalingrad (1942–43).'},
+{cat:'WWII',type:'mc',q:'Which set correctly pairs theaters with their turning points?',ch:['Europe—Midway; Pacific—Stalingrad','Europe—Stalingrad; Pacific—Midway','Both—D-Day','Both—Pearl Harbor'],right:1,a:'Europe—Stalingrad; Pacific—Midway.'},
+{cat:'WWII',type:'id',q:'What did D-Day (June 6, 1944) accomplish strategically?',a:'It opened the Western Front, squeezing Germany from both sides.'},
+{cat:'WWII',type:'mc',q:'Which were Hitler’s key strategic blunders?',ch:['Avoiding a two-front war','Invading the USSR while still fighting Britain, plus declaring war on the U.S.','Allying with Britain','Refusing to fight'],right:1,a:'A two-front war (invading the USSR) plus declaring war on the U.S.'},
+{cat:'WWII',type:'tf',q:'TRUE or FALSE: Japan’s attack on Pearl Harbor and Germany’s declaration of war drew the U.S. fully into WWII.',a:'TRUE.'},
+{cat:'WWII',type:'id',q:'What is the “arsenal of democracy,” and why did it matter?',a:'U.S. industrial output that out-produced the entire Axis and supplied the Allies.'},
+{cat:'WWII',type:'mc',q:'When did Germany surrender, and what ended the Pacific war?',ch:['1944; the fall of Berlin','May 1945; the atomic bombings of Hiroshima and Nagasaki','1943; the fall of Italy','1946; a negotiated peace'],right:1,a:'May 1945; the atomic bombings ended the Pacific war.'},
+{cat:'WWII',type:'id',q:'Estimate the human cost of WWII and name three of its major consequences.',a:'~60–80 million dead; the Holocaust, the atomic bomb, and the Cold War.'},
+{cat:'WWII',type:'mc',q:'The Munich Agreement’s failure proves which lesson about Hitler?',ch:['He had limited, satisfiable aims','He sought unlimited expansion','He wanted only the Sudetenland','He never broke agreements'],right:1,a:'He sought unlimited expansion.'},
+{cat:'WWII',type:'tf',q:'TRUE or FALSE: Concentration camps were central to the Nazi genocide.',a:'TRUE.'},
+{cat:'WWII',type:'mc',q:'Which thesis best answers “How was WWII’s outcome determined?”',ch:['A single decisive battle','Overwhelming Allied production, Soviet manpower, key turning points, and Axis overreach together','Superior Axis technology','Pure luck'],right:1,a:'Allied production + Soviet manpower + turning points + Axis overreach together.'},
+{cat:'WWII',type:'id',q:'Who became U.S. president upon FDR’s death and made the atomic-bomb decision?',a:'Harry Truman.'},
+{cat:'WWII',type:'tf',q:'TRUE or FALSE: FDR led the U.S. through most of WWII and died in April 1945, before victory in Europe.',a:'TRUE.'},
+{cat:'WWII',type:'mc',q:'Which was NOT a cost or consequence of WWII?',ch:['The Holocaust','The Cold War','The League of Nations','The atomic bomb'],right:2,a:'The League of Nations (that was WWI).'},
+{cat:'WWII',type:'id',q:'Define “theaters” in the WWII context.',a:'The distinct geographic zones of the war (European, Pacific, etc.).'},
+ 
+// ---------------- COLD WAR (30) ----------------
+{cat:'ColdWar',type:'mc',q:'Containment is best defined as the U.S. strategy to:',ch:['Roll back existing communism','Stop the SPREAD of communism','Withdraw into isolationism','Conquer the USSR'],right:1,a:'Stop the spread of communism (not roll it back).'},
+{cat:'ColdWar',type:'id',q:'State the Truman Doctrine in one line and the shift it represented.',a:'The U.S. would help any country resisting communism — a shift from isolationism to active global leadership.'},
+{cat:'ColdWar',type:'mc',q:'The Marshall Plan’s strategic purpose was to:',ch:['Punish Germany','Rebuild Western Europe to limit communism’s appeal','Fund the Warsaw Pact','Create the UN'],right:1,a:'Rebuild Western Europe to limit communism’s appeal.'},
+{cat:'ColdWar',type:'tf',q:'TRUE or FALSE: The USSR forbade its satellite states from accepting Marshall Plan aid.',a:'TRUE.'},
+{cat:'ColdWar',type:'mc',q:'Which “Berlin” event is NOT part of the Cold War?',ch:['Berlin Airlift','Berlin Wall','Berlin Blockade','Berlin Conference'],right:3,a:'The Berlin Conference (1884–85) — it carved up Africa.'},
+{cat:'ColdWar',type:'id',q:'Distinguish the Berlin Airlift, Blockade, and Wall by date and function.',a:'Blockade + Airlift (1948–49): USSR cut off West Berlin, the West flew supplies in. Wall (1961): physically divided East/West Berlin.'},
+{cat:'ColdWar',type:'mc',q:'The Potsdam Conference (1945) resulted in:',ch:['The creation of NATO','Dividing Germany into four occupation zones','The Marshall Plan','The fall of the Berlin Wall'],right:1,a:'Dividing Germany into four occupation zones.'},
+{cat:'ColdWar',type:'tf',q:'TRUE or FALSE: West Germany was capitalist and Western-backed; East Germany was communist and Soviet-controlled.',a:'TRUE.'},
+{cat:'ColdWar',type:'mc',q:'NATO (1949) and the Warsaw Pact (1955) represent:',ch:['Two economic unions','Opposing military alliances of the Cold War','Decolonization movements','Peace treaties'],right:1,a:'Opposing military alliances of the Cold War.'},
+{cat:'ColdWar',type:'id',q:'Which alliance was the Soviet response to NATO, and name three member states.',a:'The Warsaw Pact — e.g., Poland, East Germany, Czechoslovakia, Hungary, Romania, Bulgaria.'},
+{cat:'ColdWar',type:'mc',q:'Churchill’s “Iron Curtain” speech warned that:',ch:['The U.S. was isolationist','The USSR was dividing Europe into a free West and a Soviet-controlled East','Germany would reunite','The League had failed'],right:1,a:'The USSR was dividing Europe into a free West and Soviet East.'},
+{cat:'ColdWar',type:'tf',q:'TRUE or FALSE: Lenin’s NEP was a temporary, partial allowance of small private business to revive the economy.',a:'TRUE.'},
+{cat:'ColdWar',type:'id',q:'What did Lenin adapt from Marx with his idea of a disciplined “vanguard” party?',a:'That a small elite party should lead the revolution on behalf of the workers (Marxism-Leninism).'},
+{cat:'ColdWar',type:'mc',q:'The Bolshevik slogan that mobilized support in 1917 was:',ch:['“Liberty, Equality, Fraternity”','“Peace, Land, and Bread”','“Asia for Asians”','“Workers of all lands”'],right:1,a:'“Peace, Land, and Bread.”'},
+{cat:'ColdWar',type:'id',q:'Name Stalin’s program to industrialize rapidly and the agricultural policy it required.',a:'The Five-Year Plans; forced collectivization.'},
+{cat:'ColdWar',type:'mc',q:'The Holodomor refers to:',ch:['A Nazi camp','Stalin’s man-made famine in Ukraine','A Cold War treaty','Mao’s revolution'],right:1,a:'Stalin’s man-made famine (“death by hunger”) in Ukraine.'},
+{cat:'ColdWar',type:'tf',q:'TRUE or FALSE: The Great Purge used the secret police and the Gulag to eliminate perceived threats to Stalin.',a:'TRUE.'},
+{cat:'ColdWar',type:'mc',q:'Mao founded the People’s Republic of China in what year?',ch:['1917','1933','1949','1961'],right:2,a:'1949.'},
+{cat:'ColdWar',type:'id',q:'What was the Great Leap Forward, and what was its catastrophic result?',a:'Mao’s campaign to industrialize overnight (collectives + “backyard furnaces”) — it caused the deadliest famine in history (15–45 million dead).'},
+{cat:'ColdWar',type:'mc',q:'The “backyard furnaces” of the Great Leap Forward failed because:',ch:['They produced excellent steel','People melted useful tools to hit quotas while crops went unharvested','They were never built','They fed millions'],right:1,a:'People melted useful tools for useless “steel” while crops rotted.'},
+{cat:'ColdWar',type:'id',q:'Name Mao’s 1966–76 campaign and the youth group that enforced it.',a:'The Cultural Revolution; the Red Guards.'},
+{cat:'ColdWar',type:'mc',q:'The Cultural Revolution targeted the “Four Olds”: old ideas, culture, customs, and:',ch:['armies','habits','factories','farms'],right:1,a:'habits.'},
+{cat:'ColdWar',type:'mc',q:'The Korean and Vietnam Wars are best understood as:',ch:['Colonial wars','Cold War proxy “hot” wars applying containment in Asia','World War battles','Civil wars unrelated to the Cold War'],right:1,a:'Cold War proxy “hot” wars applying containment in Asia.'},
+{cat:'ColdWar',type:'tf',q:'TRUE or FALSE: The Korean War ended in a decisive U.S. victory and Korean reunification.',a:'FALSE.',why:'It ended in a stalemate; Korea remains split today.'},
+{cat:'ColdWar',type:'id',q:'In Vietnam, who did the U.S. back, and what was the outcome for containment?',a:'The non-communist South — containment failed; the communist North won.'},
+{cat:'ColdWar',type:'fill',q:'Forcing peasants onto state farms, used by both the USSR and Mao’s China, is called ______.',a:'collectivization.'},
+{cat:'ColdWar',type:'id',q:'Define “intervention” in the Cold War context.',a:'One country interfering in another’s affairs — both superpowers did it.'},
+{cat:'ColdWar',type:'mc',q:'Which statement about the Marshall Plan and the Cold War is BEST?',ch:['It had no link to the Cold War','It was containment through money and helped split Europe into two blocs','It was a Soviet program','It rebuilt only Eastern Europe'],right:1,a:'It was containment through money and helped split Europe into two blocs.'},
+{cat:'ColdWar',type:'tf',q:'TRUE or FALSE: The combination of the Iron Curtain, NATO, and the Warsaw Pact marked the deepening of Cold War tensions.',a:'TRUE.'},
+{cat:'ColdWar',type:'id',q:'Trace Stalin’s arc from WWII to the early Cold War in one line.',a:'WWII ally of the West → Cold War enemy as a totalitarian rival bloc formed.'},
+ 
+// ---------------- IMPERIALISM + INTERNATIONALISM / MODERN ECONOMY (20) ----------------
+{cat:'Imperialism',type:'mc',q:'Informal imperialism differs from formal colonization in that it:',ch:['Requires direct military occupation','Exerts economic/political control without direct rule','Always uses assimilation','Grants independence'],right:1,a:'It exerts economic/political control without direct rule.'},
+{cat:'Imperialism',type:'id',q:'Define “assimilation” as a colonial policy and name the empire most associated with it.',a:'Forcing colonized people to adopt the colonizer’s culture — especially the French.'},
+{cat:'Imperialism',type:'mc',q:'Leopold II’s Congo Free State is infamous because it:',ch:['Granted early independence','Was run as his private property with brutal exploitation killing millions','Was a model colony','Was never colonized'],right:1,a:'It was his private property, run with brutality that killed millions.'},
+{cat:'Imperialism',type:'tf',q:'TRUE or FALSE: “Asia for Asians” was Japan’s claim to liberate Asia from the West even as it conquered the region.',a:'TRUE.'},
+{cat:'Imperialism',type:'id',q:'Define “sovereignty.”',a:'A state’s right to govern itself without outside interference.'},
+{cat:'Imperialism',type:'id',q:'What was the “Year of Africa,” and when?',a:'1960 — 17 African nations gained independence in a single year.'},
+{cat:'Imperialism',type:'mc',q:'Decolonization accelerated after WWII largely because:',ch:['Empires grew stronger','Exhausted empires could no longer hold colonies, and self-determination spread','Colonies wanted to stay','The UN banned independence'],right:1,a:'Exhausted empires couldn’t hold colonies, and self-determination spread.'},
+{cat:'Imperialism',type:'tf',q:'TRUE or FALSE: Self-determination, promoted by Wilson, helped fuel anticolonial and decolonization movements.',a:'TRUE.'},
+{cat:'Imperialism',type:'id',q:'Define “anticolonialism.”',a:'Movements to end colonial rule.'},
+{cat:'Imperialism',type:'mc',q:'Pseudoscience connected to imperialism by:',ch:['Disproving racism','Providing a false “scientific” justification for racial hierarchy and conquest','Ending colonization','Funding decolonization'],right:1,a:'Providing a false “scientific” justification for racial hierarchy and conquest.'},
+{cat:'Imperialism',type:'mc',q:'The Berlin Conference (1884–85) is significant because it:',ch:['Started the Cold War','Set rules for European powers to divide Africa','Granted African independence','Created NATO'],right:1,a:'It set rules for Europeans to divide Africa.'},
+{cat:'Imperialism',type:'tf',q:'TRUE or FALSE: The Berlin Conference is a Cold War event.',a:'FALSE.',why:'It is about the partition of Africa, decades before the Cold War.'},
+{cat:'Imperialism',type:'id',q:'Define “self-determination” and name the leader who popularized it.',a:'Peoples’ right to choose their own government — Woodrow Wilson.'},
+{cat:'ColdWar',type:'mc',q:'The Non-Aligned Movement consisted of:',ch:['NATO members','Nations refusing to side with either the U.S. or USSR','Warsaw Pact members','Only European states'],right:1,a:'Nations refusing to side with either superpower.'},
+{cat:'ColdWar',type:'id',q:'Define “internationalism” and give three institutional examples.',a:'Cooperation across nations — e.g., the League of Nations, the UN, the IMF/World Bank, the EU.'},
+{cat:'ColdWar',type:'mc',q:'The IMF is best described as:',ch:['A military alliance','A global institution that lends to and stabilizes economies','A colonial empire','A trade tariff'],right:1,a:'A global institution that lends to and stabilizes economies.'},
+{cat:'ColdWar',type:'id',q:'What is NAFTA, who were its members, and what year did it begin?',a:'North American Free Trade Agreement — U.S., Canada, Mexico — 1994.'},
+{cat:'ColdWar',type:'mc',q:'“Liberal democratic” systems are characterized by:',ch:['One-party rule','Representative government, individual rights, and free markets','State ownership of all industry','Hereditary monarchy'],right:1,a:'Representative government, individual rights, and free markets.'},
+{cat:'ColdWar',type:'tf',q:'TRUE or FALSE: Bretton Woods institutions like the IMF and World Bank helped stabilize the postwar global economy.',a:'TRUE.'},
+{cat:'ColdWar',type:'mc',q:'How did postwar economic recovery become a “building block” of the Cold War?',ch:['It united the superpowers','American-led recovery split the world into a capitalist West and communist East','It ended all conflict','It had no political effect'],right:1,a:'American-led recovery split the world into rival capitalist and communist blocs.'},
+  // ---- PHILOSOPHY ----
+  {cat:'Philosophy',type:'id',q:'“Life without government is nasty, brutish, and short, so people must submit to an absolute sovereign.” Whose argument — and in which work?',a:'Hobbes — in Leviathan.',why:'Trap: people confuse him with Locke. Hobbes wants <b>absolute</b> power; Locke wants consent and the right to overthrow.'},
+  {cat:'Philosophy',type:'mc',q:'Which philosopher would be LEAST likely to support overthrowing a tyrannical government?',ch:['Locke','Rousseau','Hobbes','Montesquieu'],right:2,a:'Hobbes.',why:'<span class="trap">Negative question.</span> Locke is the bait (he\'s the “right to overthrow” guy). Hobbes wants an absolute sovereign, so he\'d resist overthrow.'},
+  {cat:'Philosophy',type:'id',q:'“Separation of powers + checks and balances” — name the thinker and the book that inspired the U.S. Constitution.',a:'Montesquieu — The Spirit of the Laws.'},
+  {cat:'Philosophy',type:'id',q:'Whose idea of the “general will” makes him the most radical/democratic of the Enlightenment thinkers? Name the work.',a:'Rousseau — The Social Contract.'},
+  {cat:'Philosophy',type:'id',q:'Natural rights to life, liberty, and property; government by consent. Who, and which revolution did he most inspire?',a:'Locke — inspired the American Revolution.'},
+  {cat:'Philosophy',type:'id',q:'Which philosopher championed free speech and religious tolerance and was a fierce critic of the Church?',a:'Voltaire.'},
+
+  // ---- REFORMATION ----
+  {cat:'Reformation',type:'mc',q:'Henry VIII’s break from Rome is best described as:',ch:['A theological dispute over salvation by faith','A political break driven by a denied annulment','An embrace of Calvinist predestination','A response to the 95 Theses'],right:1,a:'A political break driven by a denied annulment.',why:'<span class="trap">Trap:</span> Luther’s break was theological; Henry’s was <b>political</b> (wanted a divorce → Act of Supremacy, 1534).'},
+  {cat:'Reformation',type:'fill',q:'Luther’s #1 target — the payments to reduce punishment for sin and the symbol of Church corruption — was the sale of ______.',a:'indulgences.'},
+  {cat:'Reformation',type:'id',q:'What 1517 act launched the Protestant Reformation, and who did it?',a:'Martin Luther nailing the 95 Theses.'},
+  {cat:'Reformation',type:'fill',q:'Calvin’s central theological idea — that God has already chosen the saved — is called ______.',a:'predestination.'},
+  {cat:'Reformation',type:'fill',q:'The Catholic council (1545–63) that ended indulgence sales, reformed the clergy, and powered the Counter-Reformation was the ______.',a:'Council of Trent.',why:'Bank trap: don’t confuse it with the Munich Agreement or Potsdam Conference.'},
+  {cat:'Reformation',type:'cfbn',q:'A church created by a king through a political act, headed by the monarch (the Church of England) — what is it called?',a:'Anglican.'},
+
+  // ---- RENAISSANCE ----
+  {cat:'Renaissance',type:'id',q:'Which Swiss historian wrote “The Civilization of the Renaissance in Italy” and defined the era as the birth of modern individualism?',a:'Jakob Burckhardt.'},
+  {cat:'Renaissance',type:'mc',q:'The Renaissance is best defined as:',ch:['A medieval religious revival','A “rebirth” of classical learning, humanism, and individualism','The Catholic response to Protestantism','A scientific rejection of the Church'],right:1,a:'A “rebirth” of classical learning, humanism, and individualism.',why:'Started in Florence, Italy, ~14th–17th c.'},
+  {cat:'Renaissance',type:'fill',q:'False claims dressed up as science (racial “science,” eugenics) — later used to justify imperialism and the Holocaust — are called ______.',a:'pseudoscience.'},
+
+  // ---- REVOLUTIONS ----
+  {cat:'Revolutions',type:'id',q:'He succeeded a famous revolutionary, declared independence Jan 1, 1804, founded the first Black republic, and crowned himself emperor. Name him AND the man he succeeded.',a:'Dessalines — successor to Toussaint L’Ouverture.',why:'<span class="trap">Classic trap:</span> Toussaint died in a French prison BEFORE independence. He did NOT declare it.'},
+  {cat:'Revolutions',type:'tf',q:'TRUE or FALSE: Toussaint L’Ouverture’s greatest achievement was personally declaring Haiti the first Black republic.',a:'FALSE.',why:'He was captured and died in a French prison (1803) <b>before</b> independence. <span class="trap">Dessalines</span> declared it in 1804.'},
+  {cat:'Revolutions',type:'mc',q:'A general rises through the military, seizes power in a 1799 coup, crowns himself, spreads a famous legal code, and is exiled after a final defeat. Who?',ch:['Robespierre','Bolívar','Napoleon','Mussolini'],right:2,a:'Napoleon.',why:'Coup 1799 → Emperor 1804 → Napoleonic Code → Waterloo 1815 → exile.'},
+  {cat:'Revolutions',type:'id',q:'“El Libertador” who dreamed of a unified Latin America (“Gran Colombia”) — name him, and say whether his unity dream succeeded.',a:'Simón Bolívar — the unity dream FAILED.'},
+  {cat:'Revolutions',type:'id',q:'Radical Jacobin who dominated the Committee of Public Safety, ran the Reign of Terror, and was guillotined in 1794. Who?',a:'Robespierre.'},
+  {cat:'Revolutions',type:'fill',q:'France forced Haiti to pay reparations in 1825 for recognition, crippling its economy for a century. This is called the ______.',a:'“Independence debt.”'},
+  {cat:'Revolutions',type:'tf',q:'TRUE or FALSE: The Haitian Revolution was the only successful large-scale slave revolt and produced the first Black republic.',a:'TRUE.'},
+
+  // ---- IDEOLOGY (Authoritarian/Totalitarian + CFBN) ----
+  {cat:'Ideology',type:'mc',q:'Fill the blanks TRUE: “Every ___ state is ___, but not every ___ state is ___.”',ch:['authoritarian / totalitarian / totalitarian / authoritarian','totalitarian / authoritarian / authoritarian / totalitarian','fascist / communist / communist / fascist','totalitarian / fascist / fascist / totalitarian'],right:1,a:'totalitarian / authoritarian / authoritarian / totalitarian.',why:'Totalitarianism is authoritarianism taken to the extreme — controls <b>everything</b>, not just politics.'},
+  {cat:'Ideology',type:'tf',q:'TRUE or FALSE: Totalitarian states control politics but leave the economy and private life alone.',a:'FALSE.',why:'That describes <b>authoritarian</b>. Totalitarian controls everything: politics, economy, culture, family, and thought.'},
+  {cat:'Ideology',type:'cfbn',q:'BY DEFINITION — An official ideology that is internationalist and seeks a classless society. (Communism / Fascism / Both / Neither)',a:'Communism.'},
+  {cat:'Ideology',type:'cfbn',q:'BY DEFINITION — Glorification of the nation and a single strong leader as the supreme good. (C/F/B/N)',a:'Fascism.'},
+  {cat:'Ideology',type:'cfbn',q:'A personality cult around the leader — think how Stalin actually ruled. (C/F/B/N)',a:'Fascism.',why:'<span class="trap">Brutal trap.</span> Answer BY DEFINITION: cult of the leader is the <b>fascist</b> definition. Stalin doing it in practice is the bait.'},
+  {cat:'Ideology',type:'cfbn',q:'Representative government resting on the consent of the governed and natural rights. (C/F/B/N)',a:'Neither.',why:'That’s liberal democracy — the opposite of both.'},
+  {cat:'Ideology',type:'cfbn',q:'Explicit hostility toward communists as enemies of the state. (C/F/B/N)',a:'Fascism.'},
+  {cat:'Ideology',type:'cfbn',q:'Use of a scapegoated minority to explain national decline. (C/F/B/N)',a:'Fascism.'},
+  {cat:'Ideology',type:'cfbn',q:'State ownership and direction of the entire economy. (C/F/B/N)',a:'Communism.'},
+  {cat:'Ideology',type:'cfbn',q:'Secret police, censorship, and propaganda used to control the population. (C/F/B/N)',a:'Both.'},
+  {cat:'Ideology',type:'cfbn',q:'Forced collectivization of agriculture onto state-run farms. (C/F/B/N)',a:'Communism.',why:'USSR (Stalin) and Mao’s China both did it — but the policy is a communist one.'},
+  {cat:'Ideology',type:'mc',q:'Which is a modern TOTALITARIAN example (not merely authoritarian)?',ch:['A military dictatorship that allows normal private life','North Korea','A one-party state that grips only politics','A liberal democracy'],right:1,a:'North Korea.'},
+
+  // ---- NAZI MACHINERY ----
+  {cat:'WWII',type:'mc',q:'Which statement about the SS is TRUE?',ch:['They were the original “Brownshirts” led by Röhm','They were purged during the Night of the Long Knives','They rose to prominence AFTER the SA leadership was destroyed','They were street brawlers replaced by the SA'],right:2,a:'They rose AFTER the SA leadership was destroyed.',why:'<span class="trap">a, b, d all describe the SA.</span> SA = early thugs (Röhm, Brownshirts); SS = elite, rose after, ran the camps.'},
+  {cat:'WWII',type:'tf',q:'TRUE or FALSE: In the Night of the Long Knives (1934), Hitler purged the SS leadership, letting the SA rise afterward.',a:'FALSE.',why:'Reversed. He purged the <b>SA</b> (killed Röhm); the <b>SS</b> rose afterward.'},
+  {cat:'WWII',type:'fill',q:'The 1938 “Night of Broken Glass” — coordinated attacks on Jewish homes, shops, and synagogues, a turning point toward the Holocaust — is called ______.',a:'Kristallnacht.'},
+  {cat:'WWII',type:'fill',q:'The 1935 laws that stripped German Jews of citizenship and legalized antisemitism were the ______.',a:'Nuremberg Laws.'},
+  {cat:'WWII',type:'id',q:'Name the anti-fascist film featuring Charlie Chaplin — and the pro-fascist Nazi propaganda film it stands against.',a:'Anti: The Great Dictator. Pro-fascist: Triumph of the Will.'},
+
+  // ---- WWII ----
+  {cat:'WWII',type:'mc',q:'All of the following were costs/results of WWII EXCEPT:',ch:['The Holocaust','The creation of the League of Nations','The atomic bombings of Hiroshima & Nagasaki','The beginning of the Cold War'],right:1,a:'The creation of the League of Nations.',why:'<span class="trap">That was WWI</span> (Wilson). After WWII you get the UN.'},
+  {cat:'WWII',type:'tf',q:'TRUE or FALSE: The Treaty of Versailles is blamed for causing WWII because it was too LENIENT on Germany.',a:'FALSE.',why:'It’s blamed for being too <b>harsh</b> — war-guilt clause + crushing reparations bred resentment.'},
+  {cat:'WWII',type:'mc',q:'Appeasement at Munich (1938) failed because it rested on a FALSE assumption. That assumption was:',ch:['Hitler’s goals were unlimited and could never be satisfied','Hitler’s goals were limited and he would stop once satisfied','Britain was militarily unprepared','The Sudetenland was worthless'],right:1,a:'That Hitler’s goals were LIMITED and he’d stop.',why:'<span class="trap">(a) states the TRUTH about Hitler</span> — but the question asks for the false assumption appeasers made.'},
+  {cat:'WWII',type:'id',q:'June 6, 1944 — the Allied invasion of occupied France that opened the Western Front. Name it.',a:'D-Day (Normandy).'},
+  {cat:'WWII',type:'tf',q:'TRUE or FALSE: Roughly 80% of German military deaths occurred on the Eastern Front against the USSR.',a:'TRUE.',why:'Why the Soviet manpower argument is central to “how WWII was won.” Turning point: Stalingrad.'},
+  {cat:'WWII',type:'id',q:'Name the European, Pacific, and Western-Front turning points usually cited for WWII.',a:'Stalingrad (Europe), Midway (Pacific), D-Day (Western Front).'},
+  {cat:'WWII',type:'id',q:'Which leader dropped the atomic bombs, and in what order were the cities hit?',a:'Truman — Hiroshima first, then Nagasaki.'},
+  {cat:'WWII',type:'mc',q:'“Same crisis, opposite responses.” The U.S. New Deal and Hitler’s rise both came directly out of:',ch:['WWI','The Great Depression','The Treaty of Versailles','The Cold War'],right:1,a:'The Great Depression.',why:'U.S. → reform within democracy. Germany → abandon democracy.'},
+
+  // ---- WWI / MIDEAST ----
+  {cat:'WWI',type:'id',q:'The idealist at Versailles — Fourteen Points, self-determination, League of Nations. Who?',a:'Woodrow Wilson (USA).'},
+  {cat:'WWI',type:'id',q:'“The Tiger” of France at Versailles who wanted to punish Germany harshly. Who?',a:'Georges Clemenceau.'},
+  {cat:'MidEast',type:'fill',q:'The 1917 British letter supporting a Jewish national home in Palestine was the ______.',a:'Balfour Declaration.'},
+  {cat:'MidEast',type:'fill',q:'The 1916 secret Anglo-French deal to carve up the Ottoman Middle East was the ______.',a:'Sykes-Picot Agreement.'},
+  {cat:'WWI',type:'tf',q:'TRUE or FALSE: Wilson’s self-determination was aimed at Europe but later fueled decolonization movements he never targeted.',a:'TRUE.'},
+
+  // ---- IMPERIALISM ----
+  {cat:'Imperialism',type:'id',q:'Belgian king who ran the Congo Free State as private property in one of history’s most brutal colonial regimes. Who?',a:'Leopold II.'},
+  {cat:'Imperialism',type:'fill',q:'Controlling a region economically/politically without direct rule is ______ imperialism.',a:'informal.'},
+  {cat:'Imperialism',type:'fill',q:'The French colonial policy of forcing colonized peoples to adopt French culture is called ______.',a:'assimilation.'},
+  {cat:'Imperialism',type:'fill',q:'The 1960 wave in which 17 African nations gained independence in a single year is the ______.',a:'Year of Africa.'},
+  {cat:'Imperialism',type:'id',q:'Japan’s slogan claiming to “liberate” Asia from the West while actually conquering it.',a:'“Asia for Asians” (Japanese imperialism).'},
+
+  // ---- COLD WAR ----
+  {cat:'ColdWar',type:'mc',q:'Which “Berlin” has NOTHING to do with the Cold War?',ch:['Airlift','Wall','Blockade','Conference'],right:3,a:'The Conference (1884–85) = carving up AFRICA.',why:'<span class="trap">THE signature trap.</span> Airlift, Wall, and Blockade are all Cold War. The Conference is decades earlier and about Africa.'},
+  {cat:'ColdWar',type:'mc',q:'Containment, as practiced by Truman, aimed to:',ch:['Roll back communism where it already existed','Prevent communism from spreading to new nations','Destroy the USSR militarily','Return the U.S. to isolationism'],right:1,a:'Prevent communism from SPREADING.',why:'<span class="trap">(a) is “rollback”</span> — the deliberate distractor. Containment is NOT rollback.'},
+  {cat:'ColdWar',type:'tf',q:'TRUE or FALSE: The Marshall Plan and the Warsaw Pact were both American-led efforts to contain communism.',a:'FALSE.',why:'Marshall Plan was American (economic). The <b>Warsaw Pact</b> was the SOVIET military alliance.'},
+  {cat:'ColdWar',type:'id',q:'Churchill’s famous phrase for the Soviet division of Europe into a free West and a controlled East.',a:'The Iron Curtain.'},
+  {cat:'ColdWar',type:'mc',q:'The Marshall Plan is best understood as:',ch:['Pure humanitarian aid with no strategy','Containment pursued through economic means','A Soviet program the West rejected','The military arm of NATO'],right:1,a:'Containment pursued through economic means.',why:'Billions to rebuild W. Europe → limit communism’s appeal. The USSR forbade its satellites from taking it.'},
+  {cat:'ColdWar',type:'id',q:'1949 Western military alliance vs. its 1955 Soviet counterpart — name both.',a:'NATO (1949) vs. the Warsaw Pact (1955).'},
+  {cat:'ColdWar',type:'tf',q:'TRUE or FALSE: Lenin’s New Economic Policy was a permanent commitment to free-market capitalism.',a:'FALSE.',why:'The NEP was <b>temporary and partial</b> — a stopgap to let the war-wrecked economy recover.'},
+  {cat:'ColdWar',type:'tf',q:'TRUE or FALSE: The Cultural Revolution and the Great Leap Forward were both campaigns led by Lenin in the USSR.',a:'FALSE.',why:'Both were <b>Mao</b> in <b>China</b>.'},
+  {cat:'ColdWar',type:'mc',q:'Two deliberate state-made famines — match each to its architect:',ch:['Holodomor—Mao; Great Leap—Stalin','Holodomor—Stalin; Great Leap—Mao','Both—Stalin','Both—Lenin'],right:1,a:'Holodomor—Stalin (Ukraine); Great Leap Forward—Mao (China).'},
+  {cat:'ColdWar',type:'id',q:'Mao’s 1966–76 campaign using fanatical youth (the Red Guards) to purge “old” ideas, culture, customs, and habits.',a:'The Cultural Revolution.'},
+  {cat:'ColdWar',type:'id',q:'Mao’s campaign with “backyard furnaces” that caused the deadliest famine in human history (15–45 million dead).',a:'The Great Leap Forward.'},
+  {cat:'ColdWar',type:'fill',q:'Newly independent nations refusing to side with either the U.S. or the USSR formed the ______.',a:'Non-Aligned Movement.'},
+  {cat:'ColdWar',type:'mc',q:'Which conference DIVIDED Germany into four occupation zones in 1945?',ch:['Berlin Conference','Potsdam Conference','Council of Trent','Munich Agreement'],right:1,a:'The Potsdam Conference (1945).'},
+  {cat:'ColdWar',type:'id',q:'Two Cold War “hot” proxy wars in Asia — one ended in stalemate/split, one the U.S. lost. Name both and their outcomes.',a:'Korea (stalemate, still split) and Vietnam (communist North won; failed U.S. containment).'},
+];
+
+// ===================== RENDER =====================
+const feed = document.getElementById('feed');
+const total = Q.length;
+document.getElementById('total').textContent = total;
+let score = 0, answered = 0;
+const missed = [];
+const typeLabel = {mc:'Multiple Choice', tf:'True / False', fill:'Fill-in', cfbn:'Com / Fasc / Both / Neither', id:'Identify'};
+
+Q.forEach((item, i) => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  const accent = CATS[item.cat] || 'var(--amber)';
+  card.style.setProperty('--accent', accent);
+  card.style.setProperty('--glow1', accent.replace('var(--','').length ? accent : accent);
+  card.dataset.index = i;
+
+  let choicesHTML = '';
+  if(item.ch){
+    const letters = ['a','b','c','d','e'];
+    choicesHTML = '<ul class="choices">' + item.ch.map((c,ci)=>
+      `<li data-ci="${ci}"><b>${letters[ci]}.</b><span>${c}</span></li>`).join('') + '</ul>';
+  }
+  const whyHTML = item.why ? `<div class="why">${item.why}</div>` : '';
+
+  card.innerHTML = `
+    <div class="badges">
+      <span class="badge cat">${item.cat}</span>
+      <span class="badge type">${typeLabel[item.type]}</span>
+    </div>
+    <div class="qnum">Question ${i+1}</div>
+    <div class="q">${item.q}</div>
+    ${choicesHTML}
+    <div class="answer">
+      <span class="alabel">Answer</span>
+      <div class="atext">${item.a}</div>
+      ${whyHTML}
+    </div>
+    <div class="tap-cue">tap to reveal ↓</div>
+    <div class="scorebar">
+      <button class="miss">✗ Missed it</button>
+      <button class="got">✓ Got it</button>
+    </div>`;
+
+  // reveal on tap (but not when tapping score buttons)
+  card.addEventListener('click', (e)=>{
+    if(e.target.closest('.scorebar')) return;
+    if(!card.classList.contains('revealed')){
+      card.classList.add('revealed');
+      if(item.ch && item.right!=null){
+        card.querySelectorAll('.choices li').forEach(li=>{
+          if(+li.dataset.ci === item.right) li.classList.add('right');
+        });
+      }
+    }
+  });
+
+  const advance = () => {
+    const next = card.nextElementSibling;
+    if(next) next.scrollIntoView({behavior:'smooth'});
+  };
+  card.querySelector('.got').addEventListener('click', ()=>{
+    if(!card.dataset.scored){ score++; answered++; card.dataset.scored='1'; updateHud(); }
+    advance();
+  });
+  card.querySelector('.miss').addEventListener('click', ()=>{
+    if(!card.dataset.scored){ answered++; card.dataset.scored='1'; missed.push(`${i+1}. ${item.cat} — ${stripTags(item.a)}`); updateHud(); }
+    advance();
+  });
+
+  feed.appendChild(card);
+});
+
+// ----- final card -----
+const fin = document.createElement('div');
+fin.className = 'card final';
+fin.style.setProperty('--accent','var(--amber)');
+fin.id = 'finalCard';
+feed.appendChild(fin);
+
+function stripTags(s){return s.replace(/<[^>]+>/g,'');}
+
+function updateHud(){
+  document.getElementById('scorepill').textContent = '✓ ' + score;
+}
+
+// progress bar + counter on scroll
+const cards = [...feed.children];
+feed.addEventListener('scroll', ()=>{
+  const idx = Math.round(feed.scrollTop / feed.clientHeight);
+  const shown = Math.min(idx+1, total);
+  document.querySelector('#count b').textContent = Math.min(idx+1, total+1) > total ? total : shown;
+  document.getElementById('bar').style.width = (Math.min(idx, total)/total*100) + '%';
+  if(idx >= total) buildFinal();
+});
+
+function buildFinal(){
+  if(fin.dataset.built) return;
+  fin.dataset.built='1';
+  const pct = answered ? Math.round(score/answered*100) : 0;
+  let verdict = 'Mark some cards to see your verdict.';
+  if(answered){
+    if(pct>=90) verdict='Certified history beast. 🦾';
+    else if(pct>=75) verdict='Beast territory. Patch the misses.';
+    else if(pct>=60) verdict='Solid base — drill the traps.';
+    else verdict='Run it again. You’ll climb fast.';
+  }
+  let missHTML = '';
+  if(missed.length){
+    missHTML = `<div class="missedlist"><h3>Drill these (${missed.length})</h3>` +
+      missed.map(m=>`<div>${m}</div>`).join('') + `</div>`;
+  }
+  fin.innerHTML = `
+    <div class="big">${answered? pct+'%':'—'}</div>
+    <h2>${score} / ${answered||0} marked correct</h2>
+    <p>${answered? 'Out of '+total+' questions in the deck.' : 'You reached the end. Scroll back up to mark cards and build a score.'}</p>
+    <div class="verdict">${verdict}</div>
+    ${missHTML}
+    <button onclick="document.getElementById('feed').scrollTo({top:0,behavior:'smooth'});">↑ Run it again</button>`;
+  document.getElementById('bar').style.width='100%';
+}
+
+// keyboard: space reveals, arrows scroll
+document.addEventListener('keydown',(e)=>{
+  const idx = Math.round(feed.scrollTop / feed.clientHeight);
+  const cur = cards[idx];
+  if(e.code==='Space'){ e.preventDefault(); if(cur) cur.click(); }
+  if(e.code==='ArrowDown' && cards[idx+1]){ e.preventDefault(); cards[idx+1].scrollIntoView({behavior:'smooth'}); }
+  if(e.code==='ArrowUp' && cards[idx-1]){ e.preventDefault(); cards[idx-1].scrollIntoView({behavior:'smooth'}); }
+});
+
+// start
+document.getElementById('startBtn').addEventListener('click',()=>{
+  document.getElementById('intro').style.opacity='0';
+  document.getElementById('intro').style.transition='opacity .4s';
+  setTimeout(()=>document.getElementById('intro').style.display='none',400);
+});
+</script>
+</body>
+</html>
